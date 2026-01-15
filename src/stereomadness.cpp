@@ -15,6 +15,7 @@ const unsigned int SCR_HEIGHT = 600;
 
 int main()
 {
+    std::cout << "BLAHHHHHHH" <<std::endl;
     // glfw: initialize and configure
     // ------------------------------
     glfwInit();
