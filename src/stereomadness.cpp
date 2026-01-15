@@ -23,15 +23,6 @@ int main()
 {
     std::cout << "BLAHHHHHHH" <<std::endl;
 
-    glm::vec4 vec(1.0f,0.0f,0.0f,1.0f);
-    glm::mat4 trans = glm::mat4(1.0f);
-    trans = glm::translate(trans, glm::vec3(1.0f,1.0f,0.0f));
-    vec  = trans * vec;
-    std::cout << vec.x << vec.y << vec.z << std::endl;
-
-
-
-
     // glfw: initialize and configure
     // ------------------------------
     glfwInit();
@@ -131,7 +122,9 @@ int main()
     }
     stbi_image_free(data);
 
+    
 
+    
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window))
@@ -153,6 +146,12 @@ int main()
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
+        glm::mat4 trans = glm::mat4(1.0f);
+        trans = glm::translate(trans, glm::vec3(0.5f, -0.5f, 0.0f));
+        trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
+        
+        unsigned int transformLoc = glGetUniformLocation(ourShader.ID,"transform");
+        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
