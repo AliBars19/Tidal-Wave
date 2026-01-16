@@ -12,8 +12,9 @@
 
 #include <iostream>
 
+//functions
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void drawQuad(float x, float y, float width, float height, glm::vec3 color);
+void drawQuad(float x, float y, float width, float height, glm::vec3 color,const unsigned int shaderID);
 void releaseQuad();
 void processInput(GLFWwindow *window);
 
@@ -21,6 +22,7 @@ void processInput(GLFWwindow *window);
 const unsigned int SCR_WIDTH = 1280;
 const unsigned int SCR_HEIGHT = 720;
 
+unsigned int VBO, VAO, EBO;
 
 
 int main()
@@ -51,19 +53,19 @@ int main()
                                           //left right bottom top
     glm::mat4 worldParameters = glm::ortho(0.0f, 16.0f, 0.0f, 9.0f,-1.0f,1.0f);
 
-    // set up vertex data (and buffer(s)) and configure vertex attributes
+    // THESE ARE DEFAULT VALUES. DO NOT CHANGE!!!!!!!!!!!!!!!!!!!!!!!!!!!
     float vertices[] = {
         // positions                    
-         3.0f,  3.0f, 0.0f, // top right
-         3.0f,  2.0f, 0.0f, // bottom right
-         2.0f,  2.0f, 0.0f, // bottom left
-         2.0f,  3.0f, 0.0f, // top left 
+         1.0f,  1.0f, 0.0f, // top right
+         1.0f,  0.0f, 0.0f, // bottom right
+         0.0f,  0.0f, 0.0f, // bottom left
+         0.0f,  1.0f, 0.0f, // top left 
     };
     unsigned int indices[] = {  
         0, 1, 3, // first triangle
         1, 2, 3  // second triangle
     };
-    unsigned int VBO, VAO, EBO;
+    
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
     glGenBuffers(1, &EBO);
@@ -81,7 +83,7 @@ int main()
     glEnableVertexAttribArray(0);
     // texture coord attribute
 
-    // load and create a texture 
+    /*// load and create a texture 
     // -------------------------
     unsigned int texture;
     glGenTextures(1, &texture);
@@ -92,7 +94,7 @@ int main()
     // set texture filtering parameters
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    /* IMAGE IMPORT LOGIC
+     IMAGE IMPORT LOGIC
     // load image, create texture and generate mipmaps
     int width, height, nrChannels;
     stbi_set_flip_vertically_on_load(true);  
@@ -121,7 +123,7 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT);
 
         // bind Texture
-        glBindTexture(GL_TEXTURE_2D, texture);
+        //glBindTexture(GL_TEXTURE_2D, texture);
 
         // render container
         ourShader.use();
@@ -129,8 +131,8 @@ int main()
         unsigned int projLoc = glGetUniformLocation(ourShader.ID, "worldParameters");
         glUniformMatrix4fv(projLoc, 1,GL_FALSE, glm::value_ptr(worldParameters));
 
-        glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        drawQuad(0,0,16,2,glm::vec3(0.0941f,0.0235f,0.729f),ourShader.ID);//Ground
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
@@ -163,4 +165,19 @@ void processInput(GLFWwindow *window)
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
     glViewport(0, 0, width, height);
+}
+void drawQuad(float x, float y, float width, float height, glm::vec3 color,const unsigned int shaderID){
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(x,y,0.0f));
+    model = glm::scale(model, glm::vec3(width,height,1.0f));
+    //NOTE: model matrix is a container that holds translation and scaler data in one and then we send that off
+
+    unsigned int modelLoc = glGetUniformLocation(shaderID,"model");//location of the model matrix, this is so shader knows where it is as it cant directly access it
+    glUniformMatrix4fv(modelLoc,1,GL_FALSE,glm::value_ptr(model));//sending said model matrix to vertex shader
+
+    unsigned int colorLoc = glGetUniformLocation(shaderID, "color");//location of the color vec3, this is so fragment shader knows where it is to color the pixels
+    glUniform3fv(colorLoc,1,glm::value_ptr(color));//sending the color vector to the fragment shader
+
+    glBindVertexArray(VAO);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
