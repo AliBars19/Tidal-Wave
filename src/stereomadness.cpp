@@ -24,6 +24,29 @@ const unsigned int SCR_HEIGHT = 720;
 
 unsigned int VBO, VAO, EBO;
 
+struct player{
+    float posX = 2.0;
+    float posY = 2.0;
+
+    float velX = 3.0;
+    float velY = 0.0;
+
+    const float width = 1.0;
+    const float height = 1.0;
+
+    const glm::vec3 color = glm::vec3(0.145f,0.588f,0.745f); 
+
+    bool touchingGround = true;
+    bool isAlive = true;;
+
+    void update(){}
+    void playerDraw(unsigned int shaderID){
+        drawQuad(posX,posY,1.25,1.25,color,shaderID);
+    }
+    void jump(){}
+    void reset(){}
+};
+player p;
 
 int main()
 {
@@ -50,7 +73,7 @@ int main()
     // ------------------------------------
     Shader ourShader("../assets/vertex.vs", "../assets/fragment.fs"); 
 
-                                          //left right bottom top
+    //                                     left right bottom top
     glm::mat4 worldParameters = glm::ortho(0.0f, 16.0f, 0.0f, 9.0f,-1.0f,1.0f);
 
     // THESE ARE DEFAULT VALUES. DO NOT CHANGE!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -111,7 +134,9 @@ int main()
     }
     stbi_image_free(data);
 */
-    // render loop
+
+    float cameraX = 0.0; //DEFAULLT VALUE
+    float cameraY = 0.0;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -128,10 +153,13 @@ int main()
         // render container
         ourShader.use();
 
+        glm::mat4 worldParameters = glm::ortho(cameraX, cameraX + 16.0f, cameraY, cameraY + 9.0f, -1.0f, 1.0f);
+
         unsigned int projLoc = glGetUniformLocation(ourShader.ID, "worldParameters");
         glUniformMatrix4fv(projLoc, 1,GL_FALSE, glm::value_ptr(worldParameters));
 
         drawQuad(0,0,16,2,glm::vec3(0.0941f,0.0235f,0.729f),ourShader.ID);//Ground
+        p.playerDraw(ourShader.ID);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
