@@ -15,7 +15,7 @@
 //functions
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void drawQuad(float x, float y, float width, float height, glm::vec3 color,float rotation,const unsigned int shaderID);
-void releaseQuad();
+void drawTri(float x, float y, float width, float height, glm::vec3 color,float rotation,const unsigned int shaderID);
 void processInput(GLFWwindow *window);
 
 // settings
@@ -23,12 +23,19 @@ const unsigned int SCR_WIDTH = 1280;
 const unsigned int SCR_HEIGHT = 720;
 
 unsigned int VBO, VAO, EBO;
+unsigned int TVBO, TVAO;
+
+enum GameMode {
+    CUBE = 0,
+    SHIP = 1   
+};
+GameMode currentmode = CUBE;
 
 struct player{
-    float posX = -5.0;
-    float posY = 20.0;
+    float posX = -15.0;
+    float posY = 5.0;
 
-    float velX = 3.0;
+    float velX = 6.0;
     float velY = 0.0;
 
     float rotation = 0;
@@ -42,31 +49,42 @@ struct player{
     bool isAlive = true;
 
     void update(float dt){
-        if(!touchingGround){
-            velY -= 60.0f * dt;
-            rotation -= 360 * dt;//target is 180 degrees in one jump, per frame
+        if(currentmode == CUBE){
+            if(!touchingGround){
+                velY -= 60.0f * dt;
+                rotation -= 360 * dt;//target is 180 degrees in one jump, per frame
+            }
+            posY += velY * dt;//increase/decrease y pos
+            posX += velX * dt;//increase/decrease x pos
+
+            if(posY <= 2.0f){//failsafe for when player hits ground
+                posY = 2.0f;
+                velY = 0;
+                touchingGround = true;
+                rotation = round(rotation / 90.0f) * 90.0f;
+            }
         }
+        if(currentmode == SHIP){
 
-        posY += velY * dt;//increase/decrease y pos
-        posX += velX * dt;//increase/decrease x pos
-
-        if(posY <= 2.0f){//failsafe for when player hits ground
-            posY = 2.0f;
-            velY = 0;
-            touchingGround = true;
-            rotation = round(rotation / 90.0f) * 90.0f;
         }
     }
     void playerDraw(unsigned int shaderID){
-        drawQuad(posX,posY,1.25,1.25,color,rotation,shaderID);
+        if(currentmode == CUBE){drawQuad(posX,posY,1.25,1.25,color,rotation,shaderID);}
+        if(currentmode == SHIP){drawQuad(posX,posY,2.25,0.75,color,rotation,shaderID);}
     }
-    void jump(){
-        if(touchingGround){
-            velY = 17.0f;
-            touchingGround = false;
+    void input(){
+        if(currentmode == CUBE){
+            if(touchingGround){
+                velY = 17.0f;
+                touchingGround = false;
+            }
+        }
+        if(currentmode == SHIP){
+
         }
     }
     void reset(){
+        currentmode = CUBE;
         posX = 2.0;
         posY = 8.0;
         velX = 3.0;
@@ -104,7 +122,7 @@ int main()
     Shader ourShader("../assets/vertex.vs", "../assets/fragment.fs"); 
 
     //                                     left right bottom top
-    glm::mat4 worldParameters = glm::ortho(0.0f, 16.0f, 0.0f, 9.0f,-1.0f,1.0f);
+    glm::mat4 worldParameters = glm::ortho(0.0f, 16.0f, 0.0f, 9.0f,-1.0f,1.0f);//BASE WORLD PARAMETERS, DO NOT CHANGE
 
     // THESE ARE DEFAULT VALUES. DO NOT CHANGE!!!!!!!!!!!!!!!!!!!!!!!!!!!
     float vertices[] = {
@@ -114,7 +132,12 @@ int main()
          -0.5f, -0.5f, 0.0f, // bottom left
          -0.5f,  0.5f, 0.0f, // top left 
     };
-    unsigned int indices[] = {  
+    float triVertices[] = {
+        0.0f,  0.5f, 0.0f,  // top center
+        0.5f, -0.5f, 0.0f,  // bottom right
+        -0.5f, -0.5f, 0.0f  //bottom left
+    };
+    unsigned int indices[] = {  //we basically making a cube out of two triangles u feel
         0, 1, 3, // first triangle
         1, 2, 3  // second triangle
     };
@@ -134,7 +157,18 @@ int main()
     // position attribute
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-    // texture coord attribute
+    
+    //TRIANGLE TVAO & TVBO
+    glGenVertexArrays(1, &TVAO);
+    glGenBuffers(1, &TVBO);
+
+    glBindVertexArray(TVAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, TVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(triVertices), triVertices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
 
     /*// load and create a texture 
     // -------------------------
@@ -201,6 +235,8 @@ int main()
         glUniformMatrix4fv(projLoc, 1,GL_FALSE, glm::value_ptr(worldParameters));
 
         drawQuad(0,0.3575,200000,2,glm::vec3(0.0941f,0.0235f,0.729f),0.0,ourShader.ID);//Ground
+        drawTri(2,2,0.5f,1.0f,glm::vec3(0,0,0),0,ourShader.ID);
+
         p.playerDraw(ourShader.ID);
         p.update(deltaTime);
 
@@ -227,7 +263,7 @@ void processInput(GLFWwindow *window)
         glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS         ||
         glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS            || 
         glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)              {
-        p.jump();
+        p.input();
     }
 }
 
@@ -252,4 +288,20 @@ void drawQuad(float x, float y, float width, float height, glm::vec3 color,float
 
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+}
+void drawTri(float x, float y, float width, float height, glm::vec3 color,float rotation,const unsigned int shaderID){
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(x,y,0.0f));
+    model = glm::rotate(model,glm::radians(rotation), glm::vec3(0.0f,0.0f,1.0f));
+    model = glm::scale(model, glm::vec3(width,height,1.0f));
+    //NOTE: model matrix is a container that holds translation and scaler data in one and then we send that off
+
+    unsigned int modelLoc = glGetUniformLocation(shaderID,"model");//location of the model matrix, this is so shader knows where it is as it cant directly access it
+    glUniformMatrix4fv(modelLoc,1,GL_FALSE,glm::value_ptr(model));//sending said model matrix to vertex shader
+
+    unsigned int colorLoc = glGetUniformLocation(shaderID, "color");//location of the color vec3, this is so fragment shader knows where it is to color the pixels
+    glUniform3fv(colorLoc,1,glm::value_ptr(color));//sending the color vector to the fragment shader
+
+    glBindVertexArray(TVAO);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
 }
