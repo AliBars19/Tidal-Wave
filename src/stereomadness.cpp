@@ -14,7 +14,7 @@
 
 //functions
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void drawQuad(float x, float y, float width, float height, glm::vec3 color,const unsigned int shaderID);
+void drawQuad(float x, float y, float width, float height, glm::vec3 color,float rotation,const unsigned int shaderID);
 void releaseQuad();
 void processInput(GLFWwindow *window);
 
@@ -26,7 +26,7 @@ unsigned int VBO, VAO, EBO;
 
 struct player{
     float posX = 2.0;
-    float posY = 2.0;
+    float posY = 8.0;
 
     float velX = 3.0;
     float velY = 0.0;
@@ -36,15 +36,39 @@ struct player{
 
     const glm::vec3 color = glm::vec3(0.145f,0.588f,0.745f); 
 
-    bool touchingGround = true;
-    bool isAlive = true;;
+    bool touchingGround = false;
+    bool isAlive = true;
 
-    void update(){}
-    void playerDraw(unsigned int shaderID){
-        drawQuad(posX,posY,1.25,1.25,color,shaderID);
+    void update(float dt){
+        if(!touchingGround){
+            velY -= 20.0f * dt;
+        }
+        posY += velY * dt;
+        posX += velX * dt;
+        if(posY <= 2.0f){
+            posY = 2.0f;
+            velY = 0;
+            touchingGround = true;
+        }
     }
-    void jump(){}
-    void reset(){}
+    void playerDraw(unsigned int shaderID){
+        drawQuad(posX,posY,1.25,1.25,color,0.0,shaderID);
+    }
+    void jump(){
+        if(touchingGround){
+            velY = 7.5f;
+            touchingGround = false;
+        }
+    }
+    void reset(){
+        posX = 2.0;
+        posY = 8.0;
+        velX = 3.0;
+        velY = 0.0;
+
+        bool touchingGround = false;
+        bool isAlive = true;
+    }
 };
 player p;
 
@@ -135,13 +159,20 @@ int main()
     stbi_image_free(data);
 */
 
-    float cameraX = 0.0; //DEFAULLT VALUE
-    float cameraY = 0.0;
+    
+
+    float deltaTime = 0.0f;
+    float lastFrame = 0.0f;
 
     while (!glfwWindowShouldClose(window))
     {
+        float currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
         // input
         processInput(window);
+        float cameraX = p.posX -5;
+        float cameraY = p.posY -2.5;
 
         // render
         glClearColor(0.266f, 0.184f, 0.988f, 1.0f);
@@ -158,8 +189,9 @@ int main()
         unsigned int projLoc = glGetUniformLocation(ourShader.ID, "worldParameters");
         glUniformMatrix4fv(projLoc, 1,GL_FALSE, glm::value_ptr(worldParameters));
 
-        drawQuad(0,0,16,2,glm::vec3(0.0941f,0.0235f,0.729f),ourShader.ID);//Ground
+        drawQuad(0,0,200000,2,glm::vec3(0.0941f,0.0235f,0.729f),0.0,ourShader.ID);//Ground
         p.playerDraw(ourShader.ID);
+        p.update(deltaTime);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -184,7 +216,7 @@ void processInput(GLFWwindow *window)
         glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS         ||
         glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS            || 
         glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)              {
-        //press button
+        p.jump();
     }
 }
 
@@ -194,10 +226,11 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
     glViewport(0, 0, width, height);
 }
-void drawQuad(float x, float y, float width, float height, glm::vec3 color,const unsigned int shaderID){
+void drawQuad(float x, float y, float width, float height, glm::vec3 color,float rotation,const unsigned int shaderID){
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(x,y,0.0f));
     model = glm::scale(model, glm::vec3(width,height,1.0f));
+    model = glm::rotate(model,glm::radians(rotation), glm::vec3(0.0f,0.0f,1.0f));
     //NOTE: model matrix is a container that holds translation and scaler data in one and then we send that off
 
     unsigned int modelLoc = glGetUniformLocation(shaderID,"model");//location of the model matrix, this is so shader knows where it is as it cant directly access it
