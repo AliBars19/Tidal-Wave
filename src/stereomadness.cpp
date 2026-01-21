@@ -25,11 +25,13 @@ const unsigned int SCR_HEIGHT = 720;
 unsigned int VBO, VAO, EBO;
 
 struct player{
-    float posX = 2.0;
-    float posY = 8.0;
+    float posX = -5.0;
+    float posY = 20.0;
 
     float velX = 3.0;
     float velY = 0.0;
+
+    float rotation = 0;
 
     const float width = 1.0;
     const float height = 1.0;
@@ -41,22 +43,26 @@ struct player{
 
     void update(float dt){
         if(!touchingGround){
-            velY -= 20.0f * dt;
+            velY -= 60.0f * dt;
+            rotation -= 360 * dt;//target is 180 degrees in one jump, per frame
         }
-        posY += velY * dt;
-        posX += velX * dt;
-        if(posY <= 2.0f){
+
+        posY += velY * dt;//increase/decrease y pos
+        posX += velX * dt;//increase/decrease x pos
+
+        if(posY <= 2.0f){//failsafe for when player hits ground
             posY = 2.0f;
             velY = 0;
             touchingGround = true;
+            rotation = round(rotation / 90.0f) * 90.0f;
         }
     }
     void playerDraw(unsigned int shaderID){
-        drawQuad(posX,posY,1.25,1.25,color,0.0,shaderID);
+        drawQuad(posX,posY,1.25,1.25,color,rotation,shaderID);
     }
     void jump(){
         if(touchingGround){
-            velY = 7.5f;
+            velY = 17.0f;
             touchingGround = false;
         }
     }
@@ -66,8 +72,8 @@ struct player{
         velX = 3.0;
         velY = 0.0;
 
-        bool touchingGround = false;
-        bool isAlive = true;
+        touchingGround = false;
+        isAlive = true;
     }
 };
 player p;
@@ -103,10 +109,10 @@ int main()
     // THESE ARE DEFAULT VALUES. DO NOT CHANGE!!!!!!!!!!!!!!!!!!!!!!!!!!!
     float vertices[] = {
         // positions                    
-         1.0f,  1.0f, 0.0f, // top right
-         1.0f,  0.0f, 0.0f, // bottom right
-         0.0f,  0.0f, 0.0f, // bottom left
-         0.0f,  1.0f, 0.0f, // top left 
+         0.5f,  0.5f, 0.0f, // top right
+         0.5f,  -0.5f, 0.0f, // bottom right
+         -0.5f, -0.5f, 0.0f, // bottom left
+         -0.5f,  0.5f, 0.0f, // top left 
     };
     unsigned int indices[] = {  
         0, 1, 3, // first triangle
@@ -157,12 +163,13 @@ int main()
         std::cout << "Failed to load texture" << std::endl;
     }
     stbi_image_free(data);
-*/
-
-    
+    */
 
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
+
+    float cameraX = p.posX -5;
+    float cameraY = 0.0;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -171,15 +178,19 @@ int main()
         lastFrame = currentFrame;
         // input
         processInput(window);
-        float cameraX = p.posX -5;
-        float cameraY = p.posY -2.5;
+
+        //camera position logic
+        cameraX = p.posX -5;
+        if (p.posY > cameraY + 7.0f) {
+            cameraY = p.posY - 7.0f;
+        }
+        if (p.posY < cameraY + 2.0f) {
+            cameraY = p.posY - 2.0f;
+        }
 
         // render
         glClearColor(0.266f, 0.184f, 0.988f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
-
-        // bind Texture
-        //glBindTexture(GL_TEXTURE_2D, texture);
 
         // render container
         ourShader.use();
@@ -189,7 +200,7 @@ int main()
         unsigned int projLoc = glGetUniformLocation(ourShader.ID, "worldParameters");
         glUniformMatrix4fv(projLoc, 1,GL_FALSE, glm::value_ptr(worldParameters));
 
-        drawQuad(0,0,200000,2,glm::vec3(0.0941f,0.0235f,0.729f),0.0,ourShader.ID);//Ground
+        drawQuad(0,0.3575,200000,2,glm::vec3(0.0941f,0.0235f,0.729f),0.0,ourShader.ID);//Ground
         p.playerDraw(ourShader.ID);
         p.update(deltaTime);
 
@@ -229,8 +240,8 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 void drawQuad(float x, float y, float width, float height, glm::vec3 color,float rotation,const unsigned int shaderID){
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(x,y,0.0f));
-    model = glm::scale(model, glm::vec3(width,height,1.0f));
     model = glm::rotate(model,glm::radians(rotation), glm::vec3(0.0f,0.0f,1.0f));
+    model = glm::scale(model, glm::vec3(width,height,1.0f));
     //NOTE: model matrix is a container that holds translation and scaler data in one and then we send that off
 
     unsigned int modelLoc = glGetUniformLocation(shaderID,"model");//location of the model matrix, this is so shader knows where it is as it cant directly access it
