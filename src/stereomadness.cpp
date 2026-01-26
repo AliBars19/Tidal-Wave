@@ -16,6 +16,7 @@
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void drawQuad(float x, float y, float width, float height, glm::vec3 color,float rotation,const unsigned int shaderID);
 void drawTri(float x, float y, float width, float height, glm::vec3 color,float rotation,const unsigned int shaderID);
+bool checkCollision(player p,levelObject l);
 void processInput(GLFWwindow *window);
 
 // settings
@@ -30,6 +31,11 @@ enum GameMode {
     SHIP = 1   
 };
 GameMode currentmode = CUBE;
+
+enum BlockType{
+    SQUARE = 0,
+    SPIKE = 1
+};
 
 struct player{
     float posX = -15.0;
@@ -67,6 +73,7 @@ struct player{
         if(currentmode == SHIP){
 
         }
+
     }
     void playerDraw(unsigned int shaderID){
         if(currentmode == CUBE){drawQuad(posX,posY,1.25,1.25,color,rotation,shaderID);}
@@ -95,6 +102,12 @@ struct player{
     }
 };
 player p;
+
+struct levelObject{
+    float x, y, width, height;
+    BlockType type;
+    unsigned int textureId;
+};
 
 int main()
 {
@@ -132,7 +145,7 @@ int main()
          -0.5f, -0.5f, 0.0f, // bottom left
          -0.5f,  0.5f, 0.0f, // top left 
     };
-    float triVertices[] = {
+    float triVertices[] = {//vertices for the triangle
         0.0f,  0.5f, 0.0f,  // top center
         0.5f, -0.5f, 0.0f,  // bottom right
         -0.5f, -0.5f, 0.0f  //bottom left
@@ -289,6 +302,7 @@ void drawQuad(float x, float y, float width, float height, glm::vec3 color,float
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
+
 void drawTri(float x, float y, float width, float height, glm::vec3 color,float rotation,const unsigned int shaderID){
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(x,y,0.0f));
@@ -304,4 +318,25 @@ void drawTri(float x, float y, float width, float height, glm::vec3 color,float 
 
     glBindVertexArray(TVAO);
     glDrawArrays(GL_TRIANGLES, 0, 3);
+}
+
+bool checkCollision(player p,levelObject l){
+    //retrieve "bounds" for player, this works for ANY gamemode btw, for the future :)
+    float playerleft = p.posX - (p.width / 2);
+    float playerright = p.posX + (p.width / 2);
+    float playerbottom = p.posY - (p.height / 2);
+    float playertop = p.posY + (p.height / 2);
+
+    //retrieve bounds for any object, also very future proof
+    float objleft = l.x - (l.width / 2);
+    float objright = l.x + (l.width / 2);
+    float objbottom = l.y - (l.height / 2);
+    float objtop = l.y + (l.height / 2);
+
+    if(playerleft < objright && playerright > objleft && playerbottom < objtop && playertop > objbottom){
+        return true;
+    }
+    else{
+        return false;
+    }
 }
