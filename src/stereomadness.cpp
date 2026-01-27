@@ -10,13 +10,13 @@
 
 #include "../assets/shader_s.h"
 
+#include <vector>
 #include <iostream>
 
 //functions
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void drawQuad(float x, float y, float width, float height, glm::vec3 color,float rotation,const unsigned int shaderID);
 void drawTri(float x, float y, float width, float height, glm::vec3 color,float rotation,const unsigned int shaderID);
-bool checkCollision(player p,levelObject l);
 void processInput(GLFWwindow *window);
 
 // settings
@@ -24,7 +24,7 @@ const unsigned int SCR_WIDTH = 1280;
 const unsigned int SCR_HEIGHT = 720;
 
 unsigned int VBO, VAO, EBO;
-unsigned int TVBO, TVAO;
+unsigned int TVBO, TVAO;    
 
 enum GameMode {
     CUBE = 0,
@@ -46,8 +46,8 @@ struct player{
 
     float rotation = 0;
 
-    const float width = 1.0;
-    const float height = 1.0;
+    const float width = 0.50;
+    const float height = 0.50;
 
     const glm::vec3 color = glm::vec3(0.145f,0.588f,0.745f); 
 
@@ -92,9 +92,9 @@ struct player{
     }
     void reset(){
         currentmode = CUBE;
-        posX = 2.0;
-        posY = 8.0;
-        velX = 3.0;
+        posX = -15.0;
+        posY = 2.0;
+        velX = 6.0;
         velY = 0.0;
 
         touchingGround = false;
@@ -102,16 +102,25 @@ struct player{
     }
 };
 player p;
-
 struct levelObject{
-    float x, y, width, height;
+    float x, y, width, height, rotation;
     BlockType type;
+    glm::vec3 color;
     unsigned int textureId;
 };
+
+std::vector<levelObject> level;
+
+// vvv functions that depend on levelobject being in their scope.
+bool checkCollision(player p,levelObject l);
+void drawLevelObject(levelObject obj, unsigned int shaderID);
 
 int main()
 {
     std::cout << "The rest of the program has compiled and main is running" <<std::endl;
+
+    level.push_back({2.0f,2.0f,1.0f,1.0f,0.0f,SPIKE,glm::vec3(0.0,0.0,0.0),0});
+    level.push_back({5.0f,2.0f,1.0f,1.0f,0.0f,SQUARE,glm::vec3(0.0,0.0,0.0),0});
 
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -134,8 +143,7 @@ int main()
     // ------------------------------------
     Shader ourShader("../assets/vertex.vs", "../assets/fragment.fs"); 
 
-    //                                     left right bottom top
-    glm::mat4 worldParameters = glm::ortho(0.0f, 16.0f, 0.0f, 9.0f,-1.0f,1.0f);//BASE WORLD PARAMETERS, DO NOT CHANGE
+    
 
     // THESE ARE DEFAULT VALUES. DO NOT CHANGE!!!!!!!!!!!!!!!!!!!!!!!!!!!
     float vertices[] = {
@@ -242,13 +250,32 @@ int main()
         // render container
         ourShader.use();
 
+        //                                     left      right            bottom         top
         glm::mat4 worldParameters = glm::ortho(cameraX, cameraX + 16.0f, cameraY, cameraY + 9.0f, -1.0f, 1.0f);
-
         unsigned int projLoc = glGetUniformLocation(ourShader.ID, "worldParameters");
         glUniformMatrix4fv(projLoc, 1,GL_FALSE, glm::value_ptr(worldParameters));
 
         drawQuad(0,0.3575,200000,2,glm::vec3(0.0941f,0.0235f,0.729f),0.0,ourShader.ID);//Ground
-        drawTri(2,2,0.5f,1.0f,glm::vec3(0,0,0),0,ourShader.ID);
+
+        for(auto& obj : level){//DRAW EVERY OBJECT IN LEVEL VECTOR
+            if(obj.x > cameraX - 2 && obj.x < cameraX + 18){//CHECK IF OBJECT IS IN CAMERA VIEW
+                drawLevelObject(obj, ourShader.ID);
+            }
+        }
+
+        for(auto& obj : level){//COLLISION CHECKER
+            if(obj.x > p.posX - 3 && obj.x < p.posX + 3){//CHECK IF OBJECT IS WITHIN REACH
+                if(checkCollision(p,obj)){
+                    if(obj.type == SPIKE){
+                         p.reset();
+                        cameraY = 0.0;
+                    }
+                    if(obj.type == SQUARE){
+                        //ADD SQUARE COLLISION STUFF(DIFF TO SPIKE)
+                    }
+                }
+            }
+        }
 
         p.playerDraw(ourShader.ID);
         p.update(deltaTime);
@@ -264,9 +291,7 @@ int main()
     glfwTerminate();
     return 0;
 }
-
-// process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
-// ---------------------------------------------------------------------------------------------------------
+//vvvvvvvvvvvvv simple glfw window setup
 void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS){
@@ -279,13 +304,11 @@ void processInput(GLFWwindow *window)
         p.input();
     }
 }
-
-// glfw: whenever the window size changed (by OS or user resize) this callback function executes
-// ---------------------------------------------------------------------------------------------
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
     glViewport(0, 0, width, height);
 }
+
 void drawQuad(float x, float y, float width, float height, glm::vec3 color,float rotation,const unsigned int shaderID){
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(x,y,0.0f));
@@ -318,6 +341,16 @@ void drawTri(float x, float y, float width, float height, glm::vec3 color,float 
 
     glBindVertexArray(TVAO);
     glDrawArrays(GL_TRIANGLES, 0, 3);
+}
+
+// vvv this function draws the object on the screen. we will call this in the render loop, we dont need to draw it in the vector yk. uses enum
+void drawLevelObject(levelObject obj, unsigned int shaderID){
+    if(obj.type == SPIKE){
+        drawTri(obj.x,obj.y,obj.width,obj.height,obj.color,obj.rotation,shaderID);
+    }
+    if(obj.type == SQUARE){
+        drawQuad(obj.x,obj.y,obj.width,obj.height,obj.color,obj.rotation,shaderID);
+    }
 }
 
 bool checkCollision(player p,levelObject l){
