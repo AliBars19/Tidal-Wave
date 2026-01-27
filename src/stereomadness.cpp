@@ -30,15 +30,24 @@ enum GameMode {
     CUBE = 0,
     SHIP = 1   
 };
-GameMode currentmode = CUBE;
-
 enum BlockType{
     SQUARE = 0,
     SPIKE = 1
 };
 
+GameMode currentmode = CUBE;
+
+struct levelObject{
+    float x, y, width, height, rotation;
+    BlockType type;
+    glm::vec3 color;
+    unsigned int textureId;
+};
+
+levelObject currentPlatform;
+
 struct player{
-    float posX = -15.0;
+    float posX = -5.0;
     float posY = 5.0;
 
     float velX = 6.0;
@@ -46,8 +55,8 @@ struct player{
 
     float rotation = 0;
 
-    const float width = 0.50;
-    const float height = 0.50;
+    const float width = 1.25;
+    const float height = 1.25;
 
     const glm::vec3 color = glm::vec3(0.145f,0.588f,0.745f); 
 
@@ -69,14 +78,23 @@ struct player{
                 touchingGround = true;
                 rotation = round(rotation / 90.0f) * 90.0f;
             }
-        }
-        if(currentmode == SHIP){
+            if(onPlatform){
+                float platformLeft = currentPlatform.x - (currentPlatform.width / 2);
+                float platformRight = currentPlatform.x + (currentPlatform.width / 2);
 
-        }
+                float playerleft = posX - (width / 2);
+                float playerright = posX + (width / 2);
 
+                if(posX > platformRight){
+                    onPlatform = false;
+                    touchingGround = false;
+                }
+            }
+        }
+        if(currentmode == SHIP){}
     }
     void playerDraw(unsigned int shaderID){
-        if(currentmode == CUBE){drawQuad(posX,posY,1.25,1.25,color,rotation,shaderID);}
+        if(currentmode == CUBE){drawQuad(posX,posY,width,height,color,rotation,shaderID);}
         if(currentmode == SHIP){drawQuad(posX,posY,2.25,0.75,color,rotation,shaderID);}
     }
     void input(){
@@ -92,24 +110,17 @@ struct player{
     }
     void reset(){
         currentmode = CUBE;
-        posX = -15.0;
+        posX = -5.0;
         posY = 2.0;
         velX = 6.0;
         velY = 0.0;
 
-        touchingGround = false;
+        touchingGround = true;
     }
 };
 player p;
-struct levelObject{
-    float x, y, width, height, rotation;
-    BlockType type;
-    glm::vec3 color;
-    unsigned int textureId;
-};
 
 std::vector<levelObject> level;
-levelObject currentPlatform;
 
 // vvv functions that depend on levelobject being in their scope.
 bool checkCollision(player p,levelObject l);
@@ -121,7 +132,7 @@ int main()
     std::cout << "The rest of the program has compiled and main is running" <<std::endl;
 
     //level.push_back({2.0f,2.0f,1.0f,1.0f,0.0f,SPIKE,glm::vec3(0.0,0.0,0.0),0});
-    level.push_back({4.0f,2.0f,1.0f,1.0f,0.0f,SQUARE,glm::vec3(0.0,0.0,0.0),0});
+    level.push_back({10.0f,2.0f,6.0f,2.0f,0.0f,SQUARE,glm::vec3(0.0,0.0,0.0),0});
 
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -255,12 +266,9 @@ int main()
         glUniformMatrix4fv(projLoc, 1,GL_FALSE, glm::value_ptr(worldParameters));
 
         drawQuad(0,0.3575,200000,2,glm::vec3(0.0941f,0.0235f,0.729f),0.0,ourShader.ID);//Ground
-
-        for(auto& obj : level){//DRAW EVERY OBJECT IN LEVEL VECTOR
-            if(obj.x > cameraX - 2 && obj.x < cameraX + 18){//CHECK IF OBJECT IS IN CAMERA VIEW
-                drawLevelObject(obj, ourShader.ID);
-            }
-        }
+        
+        
+        p.update(deltaTime);
 
         for(auto& obj : level){//COLLISION CHECKER
             if(obj.x > p.posX - 3 && obj.x < p.posX + 3){//CHECK IF OBJECT IS WITHIN REACH
@@ -273,15 +281,20 @@ int main()
                         if(!squareCollision(obj)){
                             p.reset();
                             cameraY = 0.0;
+                        }else{
+                            currentPlatform = obj;
                         }
                     }
                 }
             }
         }
-
         p.playerDraw(ourShader.ID);
-        p.update(deltaTime);
-
+        for(auto& obj : level){//DRAW EVERY OBJECT IN LEVEL VECTOR
+            if(obj.x > cameraX - 2 && obj.x < cameraX + 18){//CHECK IF OBJECT IS IN CAMERA VIEW
+                drawLevelObject(obj, ourShader.ID);
+            }
+        }
+        
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
@@ -304,6 +317,9 @@ void processInput(GLFWwindow *window)
         glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS            || 
         glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)              {
         p.input();
+    }
+    if(glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS){
+        p.reset();
     }
 }
 //vvvvvvvvvvvvv simple glfw window setup
@@ -381,7 +397,7 @@ bool squareCollision(levelObject obj){
     float objtop = obj.y + (obj.height / 2);
     float playerbottom = p.posY - (p.height / 2);
 
-    if(p.velY < 0 && playerbottom >= objtop - 0.3f){
+    if(p.velY < 0 && playerbottom >= objtop - 0.1f){
         p.velY = 0.0;
         p.touchingGround = true;
         p.onPlatform = true;
