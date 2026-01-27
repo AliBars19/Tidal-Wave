@@ -52,7 +52,7 @@ struct player{
     const glm::vec3 color = glm::vec3(0.145f,0.588f,0.745f); 
 
     bool touchingGround = false;
-    bool isAlive = true;
+    bool onPlatform = false;
 
     void update(float dt){
         if(currentmode == CUBE){
@@ -98,7 +98,6 @@ struct player{
         velY = 0.0;
 
         touchingGround = false;
-        isAlive = true;
     }
 };
 player p;
@@ -110,17 +109,19 @@ struct levelObject{
 };
 
 std::vector<levelObject> level;
+levelObject currentPlatform;
 
 // vvv functions that depend on levelobject being in their scope.
 bool checkCollision(player p,levelObject l);
 void drawLevelObject(levelObject obj, unsigned int shaderID);
+bool squareCollision(levelObject obj);
 
 int main()
 {
     std::cout << "The rest of the program has compiled and main is running" <<std::endl;
 
-    level.push_back({2.0f,2.0f,1.0f,1.0f,0.0f,SPIKE,glm::vec3(0.0,0.0,0.0),0});
-    level.push_back({5.0f,2.0f,1.0f,1.0f,0.0f,SQUARE,glm::vec3(0.0,0.0,0.0),0});
+    //level.push_back({2.0f,2.0f,1.0f,1.0f,0.0f,SPIKE,glm::vec3(0.0,0.0,0.0),0});
+    level.push_back({4.0f,2.0f,1.0f,1.0f,0.0f,SQUARE,glm::vec3(0.0,0.0,0.0),0});
 
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -142,8 +143,6 @@ int main()
     // build and compile our shader zprogram
     // ------------------------------------
     Shader ourShader("../assets/vertex.vs", "../assets/fragment.fs"); 
-
-    
 
     // THESE ARE DEFAULT VALUES. DO NOT CHANGE!!!!!!!!!!!!!!!!!!!!!!!!!!!
     float vertices[] = {
@@ -267,11 +266,14 @@ int main()
             if(obj.x > p.posX - 3 && obj.x < p.posX + 3){//CHECK IF OBJECT IS WITHIN REACH
                 if(checkCollision(p,obj)){
                     if(obj.type == SPIKE){
-                         p.reset();
+                        p.reset();
                         cameraY = 0.0;
                     }
                     if(obj.type == SQUARE){
-                        //ADD SQUARE COLLISION STUFF(DIFF TO SPIKE)
+                        if(!squareCollision(obj)){
+                            p.reset();
+                            cameraY = 0.0;
+                        }
                     }
                 }
             }
@@ -291,7 +293,7 @@ int main()
     glfwTerminate();
     return 0;
 }
-//vvvvvvvvvvvvv simple glfw window setup
+//process input
 void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS){
@@ -304,6 +306,7 @@ void processInput(GLFWwindow *window)
         p.input();
     }
 }
+//vvvvvvvvvvvvv simple glfw window setup
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
     glViewport(0, 0, width, height);
@@ -367,6 +370,24 @@ bool checkCollision(player p,levelObject l){
     float objtop = l.y + (l.height / 2);
 
     if(playerleft < objright && playerright > objleft && playerbottom < objtop && playertop > objbottom){
+        return true;
+    }
+    else{
+        return false;
+    }
+}
+
+bool squareCollision(levelObject obj){
+    float objtop = obj.y + (obj.height / 2);
+    float playerbottom = p.posY - (p.height / 2);
+
+    if(p.velY < 0 && playerbottom >= objtop - 0.3f){
+        p.velY = 0.0;
+        p.touchingGround = true;
+        p.onPlatform = true;
+        currentPlatform = obj;
+        p.posY = objtop + p.height + 0.093;
+        p.rotation = round(p.rotation / 90.0f) * 90.0f;
         return true;
     }
     else{
