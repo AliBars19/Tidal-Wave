@@ -10,6 +10,9 @@
 
 #include "../assets/shader_s.h"
 
+#include <fstream>
+#include <sstream>
+
 #include <vector>
 #include <iostream>
 
@@ -22,6 +25,7 @@ void processInput(GLFWwindow *window);
 // settings
 const unsigned int SCR_WIDTH = 1280;
 const unsigned int SCR_HEIGHT = 720;
+const float GROUND = 2.0f;
 
 unsigned int VBO, VAO, EBO;
 unsigned int TVBO, TVAO;    
@@ -43,14 +47,13 @@ struct levelObject{
     glm::vec3 color;
     unsigned int textureId;
 };
-
 levelObject currentPlatform;
 
 struct player{
     float posX = -5.0;
     float posY = 5.0;
 
-    float velX = 6.0;
+    float velX = 10.385;
     float velY = 0.0;
 
     float rotation = 0;
@@ -66,14 +69,14 @@ struct player{
     void update(float dt){
         if(currentmode == CUBE){
             if(!touchingGround){
-                velY -= 60.0f * dt;
+                velY -= 65.0f * dt;
                 rotation -= 360 * dt;//target is 180 degrees in one jump, per frame
             }
             posY += velY * dt;//increase/decrease y pos
             posX += velX * dt;//increase/decrease x pos
 
-            if(posY <= 2.0f){//failsafe for when player hits ground
-                posY = 2.0f;
+            if(posY - (height/2) <= GROUND){//failsafe for when player hits ground
+                posY = GROUND  + (height/2);
                 velY = 0;
                 touchingGround = true;
                 rotation = round(rotation / 90.0f) * 90.0f;
@@ -112,7 +115,7 @@ struct player{
         currentmode = CUBE;
         posX = -5.0;
         posY = 2.0;
-        velX = 6.0;
+        velX = 10.385;
         velY = 0.0;
 
         touchingGround = true;
@@ -132,7 +135,7 @@ int main()
     std::cout << "The rest of the program has compiled and main is running" <<std::endl;
 
     //level.push_back({2.0f,2.0f,1.0f,1.0f,0.0f,SPIKE,glm::vec3(0.0,0.0,0.0),0});
-    level.push_back({10.0f,2.0f,6.0f,2.0f,0.0f,SQUARE,glm::vec3(0.0,0.0,0.0),0});
+    level.push_back({20.f,2.5f,1.f,1.f,0.0f,SPIKE, glm::vec3(0,0,0),0});
 
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -265,13 +268,13 @@ int main()
         unsigned int projLoc = glGetUniformLocation(ourShader.ID, "worldParameters");
         glUniformMatrix4fv(projLoc, 1,GL_FALSE, glm::value_ptr(worldParameters));
 
-        drawQuad(0,0.3575,200000,2,glm::vec3(0.0941f,0.0235f,0.729f),0.0,ourShader.ID);//Ground
+        drawQuad(0,1.0f,200000,2,glm::vec3(0.0941f,0.0235f,0.729f),0.0,ourShader.ID);//Ground
         
         
         p.update(deltaTime);
 
         for(auto& obj : level){//COLLISION CHECKER
-            if(obj.x > p.posX - 3 && obj.x < p.posX + 3){//CHECK IF OBJECT IS WITHIN REACH
+            if(obj.x > p.posX - 6 && obj.x < p.posX + 6){//CHECK IF OBJECT IS WITHIN REACH
                 if(checkCollision(p,obj)){
                     if(obj.type == SPIKE){
                         p.reset();
@@ -290,7 +293,7 @@ int main()
         }
         p.playerDraw(ourShader.ID);
         for(auto& obj : level){//DRAW EVERY OBJECT IN LEVEL VECTOR
-            if(obj.x > cameraX - 2 && obj.x < cameraX + 18){//CHECK IF OBJECT IS IN CAMERA VIEW
+            if(obj.x > cameraX - 4 && obj.x < cameraX + 20){//CHECK IF OBJECT IS IN CAMERA VIEW
                 drawLevelObject(obj, ourShader.ID);
             }
         }
@@ -402,7 +405,7 @@ bool squareCollision(levelObject obj){
         p.touchingGround = true;
         p.onPlatform = true;
         currentPlatform = obj;
-        p.posY = objtop + p.height + 0.093;
+        p.posY = objtop + (p.height/2);
         p.rotation = round(p.rotation / 90.0f) * 90.0f;
         return true;
     }
