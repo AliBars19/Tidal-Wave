@@ -51,15 +51,15 @@ levelObject currentPlatform;
 
 struct player{
     float posX = -5.0;
-    float posY = 5.0;
+    float posY = 2.0;
 
     float velX = 10.385;
     float velY = 0.0;
 
     float rotation = 0;
 
-    const float width = 1.25;
-    const float height = 1.25;
+    const float width = 1.0;
+    const float height = 1.0;
 
     const glm::vec3 color = glm::vec3(0.145f,0.588f,0.745f); 
 
@@ -69,7 +69,7 @@ struct player{
     void update(float dt){
         if(currentmode == CUBE){
             if(!touchingGround){
-                velY -= 65.0f * dt;
+                velY -= 75.0f * dt;
                 rotation -= 360 * dt;//target is 180 degrees in one jump, per frame
             }
             posY += velY * dt;//increase/decrease y pos
@@ -130,12 +130,24 @@ bool checkCollision(player p,levelObject l);
 void drawLevelObject(levelObject obj, unsigned int shaderID);
 bool squareCollision(levelObject obj);
 
+//pre-defined spikes
+levelObject normalSpikeNo();
+levelObject flatSpikeNo();
+levelObject seaOfSpikeNo();
+
+//pre-defined spikes
+levelObject o1x1();
+levelObject o1x05();
+
+//create a series of the same object 
+levelObject drawSeries(levelObject obj);
+
 int main()
 {
     std::cout << "The rest of the program has compiled and main is running" <<std::endl;
 
     //level.push_back({2.0f,2.0f,1.0f,1.0f,0.0f,SPIKE,glm::vec3(0.0,0.0,0.0),0});
-    level.push_back({20.f,2.5f,1.f,1.f,0.0f,SPIKE, glm::vec3(0,0,0),0});
+    level.push_back({20.f,2.25f,1.0f,0.5f,0.0f,SQUARE, glm::vec3(0,0,0),0});
 
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -204,35 +216,6 @@ int main()
     glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    /*// load and create a texture 
-    // -------------------------
-    unsigned int texture;
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture); // all upcoming GL_TEXTURE_2D operations now have effect on this texture object
-    // set the texture wrapping parameters
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    // set texture filtering parameters
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-     IMAGE IMPORT LOGIC
-    // load image, create texture and generate mipmaps
-    int width, height, nrChannels;
-    stbi_set_flip_vertically_on_load(true);  
-
-    unsigned char *data = stbi_load(("../assets/container.jpg"), &width, &height, &nrChannels, 0);
-    if (data)
-    {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    }
-    else
-    {
-        std::cout << "Failed to load texture" << std::endl;
-    }
-    stbi_image_free(data);
-    */
-
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
 
@@ -270,7 +253,6 @@ int main()
 
         drawQuad(0,1.0f,200000,2,glm::vec3(0.0941f,0.0235f,0.729f),0.0,ourShader.ID);//Ground
         
-        
         p.update(deltaTime);
 
         for(auto& obj : level){//COLLISION CHECKER
@@ -297,7 +279,6 @@ int main()
                 drawLevelObject(obj, ourShader.ID);
             }
         }
-        
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
